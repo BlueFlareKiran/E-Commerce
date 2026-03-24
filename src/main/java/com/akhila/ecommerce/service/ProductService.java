@@ -25,31 +25,28 @@ public class ProductService {
         Map uploadResult = cloudinary.uploader().upload(
                 file.getBytes(),
                 ObjectUtils.asMap(
-                        "folder", "ecommerce/products"  // organises uploads in Cloudinary dashboard
+                        "folder", "ecommerce/products"
                 )
         );
-        return (String) uploadResult.get("secure_url");  // e.g. https://res.cloudinary.com/...
+        return (String) uploadResult.get("secure_url");
     }
 
     // Delete from Cloudinary using the public_id embedded in the URL
     private void deleteImageIfExists(String imageUrl) {
         if (imageUrl == null || imageUrl.isBlank()) return;
         try {
-            // Extract public_id from URL: "ecommerce/products/filename" (no extension)
             String publicId = extractPublicId(imageUrl);
             cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
         } catch (IOException ignored) {}
     }
 
-    // Cloudinary URLs look like: https://res.cloudinary.com/cloud/image/upload/v123/ecommerce/products/filename.jpg
-    // public_id is everything after "/upload/vXXX/" and before the file extension
     private String extractPublicId(String url) {
         String[] parts = url.split("/upload/");
-        String afterUpload = parts[1];                          // "v123/ecommerce/products/filename.jpg"
-        String withoutVersion = afterUpload.replaceFirst("v\\d+/", "");  // "ecommerce/products/filename.jpg"
+        String afterUpload = parts[1];
+        String withoutVersion = afterUpload.replaceFirst("v\\d+/", "");
         int dotIndex = withoutVersion.lastIndexOf('.');
         return dotIndex != -1
-                ? withoutVersion.substring(0, dotIndex)            // "ecommerce/products/filename"
+                ? withoutVersion.substring(0, dotIndex)
                 : withoutVersion;
     }
 
@@ -74,8 +71,8 @@ public class ProductService {
         existing.setPrice(updatedProduct.getPrice());
 
         if (imageFile != null && !imageFile.isEmpty()) {
-            deleteImageIfExists(existing.getImagePath()); // delete old image from Cloudinary
-            existing.setImagePath(saveImage(imageFile));  // upload new, store URL
+            deleteImageIfExists(existing.getImageUrl());  // ← fixed
+            existing.setImageUrl(saveImage(imageFile));   // ← fixed
         }
 
         return productRepository.save(existing);
@@ -84,7 +81,7 @@ public class ProductService {
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
-        deleteImageIfExists(product.getImagePath());
+        deleteImageIfExists(product.getImageUrl());  // ← fixed
         productRepository.deleteById(id);
     }
 
